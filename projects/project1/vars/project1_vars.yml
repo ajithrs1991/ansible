@@ -1,0 +1,12 @@
+nginx_server_name: "project1.example.com"
+
+
+# Define NGINX-related variables for the playbook
+
+#nginx_server_name: "example.com"  # The server name for NGINX
+#upstream_server: "backend-server:8080"  # The backend server to proxy traffic to
+
+#ssl_enabled: true  # Set to 'true' if SSL should be enabled, 'false' otherwise
+#ssl_certificate_path: "/etc/nginx/ssl/example.com.crt"  # Path to the SSL certificate
+#ssl_certificate_key_path: "/etc/nginx/ssl/example.com.key"  # Path to the SSL certificate key
+#ssl_dhparam_path: "/etc/nginx/ssl/dhparam.pem"  # Path to the Diffie-Hellman parameter file

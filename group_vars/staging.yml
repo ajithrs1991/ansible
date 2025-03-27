@@ -1,0 +1,2 @@
+nginx_server_name: "staging.test.com"
+nginx_root: "/var/www/html"

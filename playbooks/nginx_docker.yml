@@ -1,0 +1,9 @@
+---
+- name: Deploy nginx container using docker runtime
+  hosts: project1_app_servers
+  become: yes
+  vars_file: 
+    - "projects/{{ project_name }}/vars/{{ project_name }}_vars.yml"
+  roles: 
+    - docker
+    - docker_nginx

@@ -1,0 +1,3 @@
+nginx_server_name: "common.test.com"
+nginx_root: "/var/www/html"
+nginx_image: "nginx:latest"

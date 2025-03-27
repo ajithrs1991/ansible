@@ -1,0 +1,2 @@
+nginx_server_name: "prod.test.com"
+nginx_root:"/var/www/html"

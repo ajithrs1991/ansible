@@ -1,0 +1,78 @@
+all:
+  children:
+    dev:
+      children:
+        project1:
+          children:
+            web:
+              hosts:
+                dev-web-project1-1:
+                  ansible_host: 192.168.1.10
+                dev-web-project1-2:
+                  ansible_host: 192.168.1.11
+            bb:
+              hosts:
+                dev-bb-project1-1:
+                  ansible_host: 192.168.1.12
+                dev-bb-project1-2:
+                  ansible_host: 192.168.1.13
+        project2:
+          children:
+            web:
+              hosts:
+                dev-web-project2-1:
+                  ansible_host: 192.168.1.20
+                dev-web-project2-2:
+                  ansible_host: 192.168.1.21
+            bb:
+              hosts:
+                dev-bb-project2-1:
+                  ansible_host: 192.168.1.22
+                dev-bb-project2-2:
+                  ansible_host: 192.168.1.23
+
+    staging:
+      children:
+        project1:
+          children:
+            web:
+              hosts:
+                staging-web-project1-1:
+                  ansible_host: 192.168.2.10
+            bb:
+              hosts:
+                staging-bb-project1-1:
+                  ansible_host: 192.168.2.11
+        project2:
+          children:
+            web:
+              hosts:
+                staging-web-project2-1:
+                  ansible_host: 192.168.2.20
+            bb:
+              hosts:
+                staging-bb-project2-1:
+                  ansible_host: 192.168.2.21
+
+    prod:
+      children:
+        project1:
+          children:
+            web:
+              hosts:
+                prod-web-project1-1:
+                  ansible_host: 192.168.3.10
+            bb:
+              hosts:
+                prod-bb-project1-1:
+                  ansible_host: 192.168.3.11
+        project2:
+          children:
+            web:
+              hosts:
+                prod-web-project2-1:
+                  ansible_host: 192.168.3.20
+            bb:
+              hosts:
+                prod-bb-project2-1:
+                  ansible_host: 192.168.3.21

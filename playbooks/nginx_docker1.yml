@@ -1,0 +1,305 @@
+---
+- name: Deploy NGINX Docker container on web servers
+  hosts: "{{ target_environment }}:{{ target_project }}:web"
+  become: yes
+  vars_files:
+    - vars/nginx.yml
+  roles:
+    - nginx_deploy
+  tasks:
+    - name: Set environment-specific variables
+      set_fact:
+        nginx_container_name: "{{ lookup('vars', target_project).nginx_container_name }}"
+        nginx_configuration_file: "{{ lookup('vars', target_project).nginx_configuration_file }}"
+        nginx_image: "{{ nginx_image }}"
+
+    - name: Set NGINX container name based on project
+      debug:
+        msg: "Deploying NGINX container {{ nginx_container_name }} on web servers with config {{ nginx_configuration_file }}"
+
+#ansible-playbook deploy_nginx.yml -i inventory.yml -e target_environment=dev -e target_project=project1
+#ansible-playbook deploy_nginx.yml -i inventory.yml -e target_environment=dev -e target_project=project1 -e target_group="web,bb"
+
+
+- name: Deploy NGINX Docker container on selected server groups
+  hosts: "{{ target_environment }}:{{ target_project }}:{{ target_group }}"
+  become: yes
+  vars_files:
+    - vars/nginx.yml
+  roles:
+    - nginx_deploy
+
+- name: Deploy NGINX container on web servers
+  docker_container:
+    name: "{{ nginx_container_name }}-web"
+    image: "{{ nginx_image }}"
+    state: started
+    ports:
+      - "{{ nginx_port }}:80"
+    volumes:
+      - "{{ nginx_configuration_file }}:/etc/nginx/nginx.conf"
+    restart_policy: always
+  when: "'web' in group_names"
+
+- name: Deploy NGINX container on bb servers
+  docker_container:
+    name: "{{ nginx_container_name }}-bb"
+    image: "{{ nginx_image }}"
+    state: started
+    ports:
+      - "{{ nginx_port }}:80"
+    volumes:
+      - "{{ nginx_configuration_file }}:/etc/nginx/nginx.conf"
+    restart_policy: always
+  when: "'bb' in group_names"
+
+#Example 1: Running a Playbook for Web Servers in the prod Environment
+#ansible-playbook -i inventory.yml deploy_nginx.yml --limit prod:web
+#Example 2: Running a Playbook for a Specific Host
+#ansible-playbook -i inventory.yml deploy_nginx.yml --limit prod-web-1
+
+web:
+  vars:
+    nginx_version: "1.21.1"
+    server_name: "mywebsite.com"
+
+dev-web-1:
+  vars:
+    custom_nginx_config: "/etc/nginx/dev-web-1.conf"
+
+staging-db-1:
+  vars:
+    db_user: "dbuser"
+    db_password: "securepassword"
+
+
+ansible-project/
+│
+├── inventory/               # Inventory directory
+│   ├── inventory.yml        # Main inventory file
+│   ├── dev_inventory.yml    # Dev-specific inventory file (if needed)
+│   ├── staging_inventory.yml# Staging-specific inventory file
+│   └── prod_inventory.yml   # Prod-specific inventory file
+│
+├── playbooks/               # Directory for playbooks
+│   ├── deploy_nginx.yml     # Playbook to deploy NGINX
+│   ├── setup_db.yml         # Playbook for database setup
+│   └── update_app.yml       # Playbook for app updates
+│
+├── roles/                   # Directory for roles
+│   ├── nginx/               # NGINX role
+│   │   ├── tasks/
+│   │   │   └── main.yml     # Main tasks for NGINX role
+│   │   ├── templates/
+│   │   │   └── nginx.conf.j2 # NGINX configuration template
+│   │   └── vars/
+│   │       └── main.yml     # Variables for NGINX role
+│   │
+│   ├── db/                  # Database role
+│   │   ├── tasks/
+│   │   │   └── main.yml     # Main tasks for DB role
+│   │   └── vars/
+│   │       └── main.yml     # Variables for DB role
+│   │
+│   └── app/                 # App role
+│       ├── tasks/
+│       │   └── main.yml     # Main tasks for App role
+│       └── vars/
+│           └── main.yml     # Variables for App role
+│
+└── vars/                    # Global variables for the project
+    ├── nginx.yml            # Variables for NGINX
+    ├── db.yml               # Variables for DB
+    └── app.yml              # Variables for App
+
+
+roles/
+└── nginx/
+    ├── tasks/
+    │   └── main.yml           # NGINX installation and configuration tasks
+    ├── templates/
+    │   └── nginx.conf.j2      # Template for NGINX config file
+    ├── vars/
+    │   └── main.yml           # Variables specific to NGINX configuration
+    └── defaults/
+        └── main.yml           # Default values for NGINX role variables
+
+# roles/nginx/tasks/main.yml
+- name: Install NGINX
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Deploy NGINX configuration file
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+  notify:
+    - Restart NGINX
+
+- name: Ensure NGINX is running
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+# roles/nginx/templates/nginx.conf.j2
+server {
+    listen 80;
+    server_name {{ nginx_server_name }};
+    
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+    }
+}
+
+# roles/nginx/vars/main.yml
+nginx_server_name: "www.example.com"
+
+ansible-playbook -i inventory/inventory.yml playbooks/deploy_nginx.yml --limit dev:web
+
+
+# roles/docker/tasks/main.yml
+
+- name: Install Docker on Ubuntu/Debian
+  apt:
+    name: "{{ ubuntu_docker_package }}"
+    state: present
+    update_cache: yes
+  when: ansible_facts['distribution'] in ["Ubuntu", "Debian"]
+
+- name: Add Docker repository for Ubuntu/Debian (if using docker.io)
+  apt_repository:
+    repo: "deb [arch=amd64] {{ ubuntu_docker_repo_url }} {{ ansible_facts['distribution_release'] }} stable"
+    state: present
+    filename: "docker"
+  when: ansible_facts['distribution'] in ["Ubuntu", "Debian"] and docker_version == "latest"
+
+- name: Install Docker version on Debian (if not using docker.io package)
+  apt:
+    name: "docker-ce={{ docker_version }}"
+    state: present
+  when: ansible_facts['distribution'] == "Debian" and docker_version != "latest"
+
+- name: Start and enable Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add user to Docker group (optional)
+  user:
+    name: "{{ ansible_user }}"
+    group: docker
+    append: yes
+  when: ansible_facts['distribution'] in ["Ubuntu", "Debian"]
+
+---
+# playbooks/deploy_nginx_docker.yml
+
+- name: Deploy NGINX Docker container
+  hosts: "{{ target_environment }}:{{ target_project }}:web"  # Target web servers in the environment and project
+  become: yes  # Ensure the playbook runs with elevated privileges
+  vars:
+    docker_version: "latest"  # Can be overridden with a specific version if necessary
+    nginx_container_name: "nginx-container"
+    nginx_configuration_file: "/tmp/nginx.conf"  # Path to the NGINX configuration (or use Jinja2 template)
+    nginx_server_name: "example.com"
+  roles:
+    - docker  # Use the Docker role to ensure Docker is installed on the host
+
+  tasks:
+    - name: Pull the latest NGINX Docker image
+      docker_image:
+        name: nginx
+        source: pull
+        tag: latest
+
+    - name: Create and start NGINX container
+      docker_container:
+        name: "{{ nginx_container_name }}"
+        image: nginx:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "80:80"  # Expose port 80
+        volumes:
+          - "{{ nginx_configuration_file }}:/etc/nginx/nginx.conf:ro"  # Mount the NGINX config file
+        env:
+          NGINX_HOST: "{{ nginx_server_name }}"
+
+    - name: Ensure NGINX container is running
+      docker_container:
+        name: "{{ nginx_container_name }}"
+        state: started
+        restart_policy: always
+
+ansible-playbook -i inventory/inventory.yml playbooks/deploy_nginx_docker.yml \
+  -e target_environment=dev \
+  -e target_project=project1
+
+roles/nginx_deploy/templates/nginx.conf.j2
+
+server {
+    listen 80;
+    server_name {{ nginx_server_name }};
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+    }
+}
+
+---
+# playbooks/deploy_nginx.yml
+
+- name: Deploy NGINX Docker container with dynamic configuration
+  hosts: "{{ target_environment }}:{{ target_project }}:web"  # Target web servers in the environment and project
+  become: yes  # Use sudo to run tasks that require elevated privileges
+  vars_files:
+    - ../vars/nginx.yml  # Import global nginx variables
+
+  roles:
+    - nginx  # Use the nginx role defined in the 'roles' directory
+
+  tasks:
+    - name: Install Docker if not already installed
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+      when: ansible_facts['distribution'] == 'Ubuntu'
+
+    - name: Pull the latest NGINX Docker image
+      docker_image:
+        name: nginx
+        source: pull
+        tag: latest
+
+    - name: Render NGINX configuration file from template
+      template:
+        src: roles/nginx/templates/nginx.conf.j2
+        dest: "/tmp/nginx.conf"  # Temporary location for NGINX config
+
+    - name: Create and start NGINX container with dynamic config
+      docker_container:
+        name: "{{ nginx_container_name }}"
+        image: nginx:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "80:80"  # Expose port 80
+          - "443:443"  # Expose port 443 if SSL is enabled
+        volumes:
+          - "/tmp/nginx.conf:/etc/nginx/nginx.conf:ro"  # Mount the dynamically rendered NGINX config
+        env:
+          NGINX_HOST: "{{ nginx_server_name }}"
+
+    - name: Ensure NGINX container is running
+      docker_container:
+        name: "{{ nginx_container_name }}"
+        state: started
+        restart_policy: always
+
